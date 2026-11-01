@@ -24,6 +24,8 @@ export interface Config {
   readonly pollIntervalMs?: number
   /** Fallback worker targets when `peer_list` cannot be reached. */
   readonly targets?: string[]
+  /** Persistent engine-state file; defaults to `$DSH_HOME/fabric-engine.json`. */
+  readonly stateFile?: string
 }
 
 const DEFAULT_MCP_ENTRY = process.env.FABRIC_MCP_ENTRY ?? ''
@@ -42,4 +44,5 @@ export const Config: z<Config> = z.object({
   requestTimeoutMs: z.natural().min(60_000).default(900_000),
   pollIntervalMs: z.natural().min(500).default(2_000),
   targets: z.array(z.string()).default([]),
+  stateFile: z.string().default(''),
 })

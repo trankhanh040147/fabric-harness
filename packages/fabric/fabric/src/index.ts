@@ -6,6 +6,9 @@
  */
 
 import { Service } from '@deepseek-ai/cordis'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { Config } from './config.ts'
@@ -131,6 +134,7 @@ export default class Fabric extends Service {
   private adapterDispose: (() => void) | undefined
   private targetCache: { at: number; targets: readonly string[] } = { at: 0, targets: [] }
   private emittedTargets: readonly string[] = []
+  private readonly stateFile: string
 
   /**
    * @param ctx - host context carrying the LLM registry and the Web server.
@@ -138,6 +142,9 @@ export default class Fabric extends Service {
    */
   constructor(ctx: ConstructorParameters<typeof Service>[0], config: FabricConfig) {
     super(ctx, 'fabric')
+    this.stateFile = config.stateFile !== undefined && config.stateFile.length > 0
+      ? config.stateFile
+      : join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'fabric-engine.json')
     this.enabledValue = config.enabled !== false
     this.dashboardUrl = (config.dashboardUrl ?? 'http://127.0.0.1:8788').replace(/\/+$/, '')
     this.requestTimeoutMs = config.requestTimeoutMs ?? 600_000
@@ -148,6 +155,7 @@ export default class Fabric extends Service {
       args: config.mcpArgs ?? [],
       cwd: config.mcpCwd,
     })
+    this.enabledValue = this.readPersistedEnabled() ?? this.enabledValue
     this.ctx.effect(() => () => {
       this.adapterDispose?.()
       this.client.dispose()
@@ -166,7 +174,32 @@ export default class Fabric extends Service {
   setEnabled(enabled: boolean): void {
     if (this.enabledValue === enabled) return
     this.enabledValue = enabled
+    this.persistEnabled(enabled)
     this.registerAdapter()
+  }
+
+  /** Read the persisted engine switch, or undefined when absent/invalid. */
+  private readPersistedEnabled(): boolean | undefined {
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(this.stateFile, 'utf8'))
+      if (typeof parsed === 'object' && parsed !== null && 'enabled' in parsed) {
+        const enabled = (parsed as { enabled?: unknown }).enabled
+        return typeof enabled === 'boolean' ? enabled : undefined
+      }
+    } catch {
+      // Missing or unreadable state keeps the configured default.
+    }
+    return undefined
+  }
+
+  /** Persist the engine switch; failure is non-fatal and reported once. */
+  private persistEnabled(enabled: boolean): void {
+    try {
+      mkdirSync(dirname(this.stateFile), { recursive: true })
+      writeFileSync(this.stateFile, `${JSON.stringify({ enabled, updatedAt: new Date().toISOString() }, null, 2)}\n`)
+    } catch (error) {
+      console.warn('[fabric] could not persist engine state', error)
+    }
   }
 
   /**
@@ -246,7 +279,7 @@ export default class Fabric extends Service {
       dashboardReachable: await this.dashboardReachable(),
       targets,
       workers,
-      models: targets.map(target => ({ id: target, name: `${target} (Fabric)` })),
+      models: this.enabledValue ? targets.map(target => ({ id: target, name: `${target} (Fabric)` })) : [],
     }
   }
 
