@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Fabric 引擎",
+    "description": "在 agent-fabric 工作节点上运行会话模型。"
+  }
+}

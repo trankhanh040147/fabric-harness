@@ -591,3 +591,17 @@
       name: '@deepseek-ai/dsh-agent-preset-registry'
       config:
         default: standard
+
+# ── Fabric Harness: agent-fabric engine, worker status, and the Fabric page ──
+
+- insert:
+    - id: fabric
+      name: '@deepseek-ai/dsh-fabric'
+      config:
+        enabled: true
+        dashboardUrl: http://127.0.0.1:8788
+        targets: [claude, codex, antigravity, opencode, cursor, hermes]
+        mcpArgs: !!js "[process.env.FABRIC_MCP_ENTRY ?? '/Users/vulcanlabs/src/gh/agent-fabric/src/mcp/peer-mcp.ts']"
+
+    - id: ui-fabric
+      name: '@deepseek-ai/dsh-client-ui-fabric'
