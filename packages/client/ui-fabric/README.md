@@ -16,19 +16,11 @@ heartbeats, and offered peer models, toggles the engine through
 
 ## Model Experience
 
-### Request context
-
-#### What the model sees
-
-None; this package contributes no prompt or tool schema text.
-
-#### Token effect
-
-None.
+None, as the page, tab, and settings card only read the loopback fabric surface.
 
 #### KV Cache effect
 
-None.
+None; every Fabric surface is independent of model request context.
 
 ## Known Limitations and Deferred Work
 

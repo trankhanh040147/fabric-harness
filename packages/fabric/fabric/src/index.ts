@@ -12,7 +12,6 @@ import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { Config } from './config.ts'
-import type { Config as FabricConfig } from './config.ts'
 import { FabricAdapter } from './adapter.ts'
 import { FabricMcpClient } from './mcp.ts'
 
@@ -140,7 +139,7 @@ export default class Fabric extends Service {
    * @param ctx - host context carrying the LLM registry and the Web server.
    * @param config - resolved deployment policy.
    */
-  constructor(ctx: ConstructorParameters<typeof Service>[0], config: FabricConfig) {
+  constructor(ctx: ConstructorParameters<typeof Service>[0], config: Config) {
     super(ctx, 'fabric')
     this.stateFile = config.stateFile !== undefined && config.stateFile.length > 0
       ? config.stateFile
@@ -407,4 +406,3 @@ export default class Fabric extends Service {
 }
 
 export { Config } from './config.ts'
-export type { Config as FabricConfig } from './config.ts'

@@ -17,20 +17,11 @@ model catalogs stop offering peers.
 
 ## Model Experience
 
-### Request context
-
-#### What the model sees
-
-Nothing directly. The plugin contributes no system prompt or tool schema; the
-peer receives a flattened transcript produced by the provider adapter.
-
-#### Token effect
-
-None for DSH-side prompts. Each call spends peer-side tokens.
+Indirectly, through the peer provider's flattened prompt: the adapter forwards the conversation as one text request and the peer worker owns the model-visible turn.
 
 #### KV Cache effect
 
-None.
+None; each peer worker request is independent and DSH-side prompts are unchanged.
 
 ## Known Limitations and Deferred Work
 

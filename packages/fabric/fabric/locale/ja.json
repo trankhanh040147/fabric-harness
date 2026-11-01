@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Fabric エンジン",
+    "description": "agent-fabric のワーカー上でセッションのモデルを実行します。"
+  }
+}

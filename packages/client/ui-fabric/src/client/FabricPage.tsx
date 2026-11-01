@@ -82,6 +82,25 @@ interface RunRow {
   readonly updatedAt?: string
 }
 
+interface RecommendTargetStatus {
+  readonly target?: string
+  readonly displayName?: string
+  readonly liveness?: string
+  readonly score?: number
+  readonly weight?: number
+  readonly enabled?: boolean
+}
+
+interface Recommend {
+  readonly recommendedTarget?: string
+  readonly confidence?: number
+  readonly rationale?: string
+  readonly shouldSelfSolve?: boolean
+  readonly selfSolveRationale?: string
+  readonly liveTargets?: readonly string[]
+  readonly targetStatuses?: readonly RecommendTargetStatus[]
+}
+
 const POLL_MS = 5_000
 
 const pageStyle = { padding: 20, display: 'flex', flexDirection: 'column' as const, gap: 16, height: '100%', overflow: 'auto' }
@@ -165,7 +184,8 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [recommendTask, setRecommendTask] = useState('')
-  const [recommend, setRecommend] = useState<string>('')
+  const [recommend, setRecommend] = useState<Recommend | undefined>(undefined)
+  const [recommendFailed, setRecommendFailed] = useState(false)
 
   const load = useCallback(async (): Promise<void> => {
     try {
@@ -213,8 +233,9 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
 
   const askRecommend = useCallback(async (): Promise<void> => {
     if (recommendTask.trim().length === 0) return
-    const result = await readJson<unknown>(`/routing/recommend?task=${encodeURIComponent(recommendTask.trim())}`)
-    setRecommend(result === undefined ? 'Recommendation request failed.' : JSON.stringify(result, null, 2))
+    const result = await readJson<Recommend>(`/routing/recommend?task=${encodeURIComponent(recommendTask.trim())}`)
+    setRecommendFailed(result === undefined)
+    setRecommend(result)
   }, [recommendTask])
 
   const tasks = overview?.tasks
@@ -243,7 +264,7 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
         </div>
         <div style={rowStyle}>
           <span style={{ fontSize: 12, opacity: 0.8 }}>{status?.enabled === true ? 'On' : 'Off'}</span>
-          <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '6px 14px', borderRadius: 999, cursor: 'pointer' }}>
+          <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '6px 14px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {busy ? '…' : status?.enabled === true ? 'Turn off' : 'Turn on'}
           </button>
         </div>
@@ -373,7 +394,42 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
           />
           <button type="button" onClick={() => { void askRecommend() }} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Recommend</button>
         </div>
-        {recommend.length > 0 && <pre style={{ margin: '10px 0 0', maxHeight: 220, overflow: 'auto', fontSize: 12 }}>{recommend}</pre>}
+        {recommendFailed && <div style={{ marginTop: 10, fontSize: 12, color: '#f85149' }}>Recommendation request failed.</div>}
+        {recommend !== undefined && (
+          <div style={{ marginTop: 12, border: '1px solid rgba(128,128,128,0.25)', borderRadius: 8, padding: 12, fontSize: 13 }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'baseline' }}>
+              <span><strong>{recommend.recommendedTarget ?? '—'}</strong> recommended</span>
+              <span style={{ opacity: 0.75 }}>confidence {recommend.confidence === undefined ? '—' : `${Math.round(recommend.confidence * 100)}%`}</span>
+              <span style={{ opacity: 0.75 }}>self-solve {recommend.shouldSelfSolve === true ? 'preferred' : 'not preferred'}</span>
+              {recommend.liveTargets !== undefined && <span style={{ opacity: 0.75 }}>live: {recommend.liveTargets.join(', ') || '—'}</span>}
+            </div>
+            {recommend.rationale !== undefined && <div style={{ marginTop: 8, opacity: 0.85 }}>{recommend.rationale}</div>}
+            {recommend.selfSolveRationale !== undefined && (
+              <div style={{ marginTop: 6, opacity: 0.65, fontSize: 12 }}>{recommend.selfSolveRationale}</div>
+            )}
+            {(recommend.targetStatuses?.length ?? 0) > 0 && (
+              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12, marginTop: 10 }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Target</th><th style={thStyle}>Liveness</th><th style={thStyle}>Score</th>
+                    <th style={thStyle}>Weight</th><th style={thStyle}>Enabled</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recommend.targetStatuses?.map(status => (
+                    <tr key={status.target ?? status.displayName}>
+                      <td style={tdStyle}>{status.displayName ?? status.target ?? '—'}</td>
+                      <td style={tdStyle}>{status.liveness ?? '—'}</td>
+                      <td style={tdStyle}>{status.score ?? '—'}</td>
+                      <td style={tdStyle}>{status.weight ?? '—'}</td>
+                      <td style={tdStyle}>{status.enabled === true ? 'yes' : 'no'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={cardStyle}>

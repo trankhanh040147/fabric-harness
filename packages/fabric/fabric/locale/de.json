@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Fabric-Engine",
+    "description": "Führt Sitzungsmodelle auf agent-fabric-Workern aus."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Движок Fabric",
+    "description": "Запускает модели сеанса на воркерах agent-fabric."
+  }
+}

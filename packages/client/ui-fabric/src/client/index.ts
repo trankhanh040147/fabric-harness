@@ -13,9 +13,10 @@ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { FabricHeaderButton } from './FabricHeaderButton.tsx'
 import { FabricIcon } from './FabricIcon.tsx'
 import { FabricPage } from './FabricPage.tsx'
+import { FabricSettingsSection } from './FabricSettingsSection.tsx'
 import { FabricTab } from './FabricTab.tsx'
 import { FabricTabTitle } from './FabricTabTitle.tsx'
-import { en, NS, zh, type FabricKey } from './locales.ts'
+import { de, en, es, fr, ja, NS, pt, ru, zh, type FabricKey } from './locales.ts'
 
 const PANEL_ID = 'fabric' as MainPanelId
 const TAB_ID = '@deepseek-ai/dsh-client-ui-fabric'
@@ -47,7 +48,7 @@ function sidebarRight(ctx: ClientContext): SidebarRightFace {
  * @param ctx - browser services used by these contributions.
  */
 function activate(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'ui-fabric: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { en, zh, ja, es, fr, de, ru, pt }), 'ui-fabric: dictionaries')
   const t = ctx.locale.bind(NS)
   ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',
@@ -79,6 +80,13 @@ function activate(ctx: ClientContext): void {
     key: TAB_ID,
     locale: NS,
   } as never, FabricTabTitle))
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'fabric',
+    order: 60,
+    label: () => t('nav'),
+    locale: NS,
+  } as never, FabricSettingsSection))
   ctx.slots.inject('conversation.session.header.utilities' as never, () => ctx.slots.register({
     name: 'conversation.session.header.utilities',
     id: 'fabric-open',

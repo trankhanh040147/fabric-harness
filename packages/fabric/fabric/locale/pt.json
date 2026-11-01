@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Motor Fabric",
+    "description": "Executa os modelos da sessão nos workers do agent-fabric."
+  }
+}
