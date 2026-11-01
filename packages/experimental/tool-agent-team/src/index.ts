@@ -157,6 +157,15 @@ function jsonOutput<const S extends ValueSchemaSpec>(schema: S): {
   }
 }
 
+/** Parse a `<provider>:<model>` teammate route argument. */
+function parseModelRoute(raw: string): { provider: string; model: string } {
+  const index = raw.indexOf(':')
+  if (index <= 0 || index === raw.length - 1) {
+    throw new Error('model must be formatted "<provider>:<model>", for example "fabric:antigravity"')
+  }
+  return { provider: raw.slice(0, index), model: raw.slice(index + 1) }
+}
+
 /** Recover the exact caller guaranteed by Agent-scoped tool discovery. */
 function callingAgent(agent: Agent | undefined, toolName: string): Agent {
   /* v8 ignore next 2 -- Team tools are registered only in an exact Agent scope, so discovery supplies this carrier. */
@@ -201,6 +210,10 @@ To message another teammate, use send_message({ target: "<teammate name>", messa
           enum: ['fresh', 'fork'],
           description: 'fresh starts without Lead history; fork inherits completed Lead turns. Defaults to fresh.',
         },
+        model: {
+          type: 'string',
+          description: 'Optional child LLM route as "<provider>:<model>", for example "fabric:antigravity" to run this teammate on a live fabric peer. The selected subagent backend must support child agent options.',
+        },
       },
       output: jsonOutput(SPAWN_VALUE_SCHEMA),
       async execute(args, exec) {
@@ -212,6 +225,7 @@ To message another teammate, use send_message({ target: "<teammate name>", messa
           prompt: [{ type: 'text', text: args.prompt }],
           context,
           provider: context === 'fork' ? config.forkProvider : config.freshProvider,
+          ...(args.model === undefined ? {} : { model: parseModelRoute(args.model) }),
           signal: exec.signal,
         })
         return { member: modelMember(result.member) }

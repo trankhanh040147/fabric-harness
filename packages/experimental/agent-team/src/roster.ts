@@ -260,6 +260,16 @@ export class TeamRoster {
       await this.journal.appendAndFlush(root, 'team/member', { version: 2, teamId: TeamId(root.id), member })
     })
 
+    const backend = this.ctx.subagents.getProvider(request.provider)
+    if (backend === undefined) {
+      throw new TeamError(`subagent provider "${request.provider}" is not registered`, 'TEAM_PROVIDER_UNKNOWN')
+    }
+    if (request.model !== undefined && !backend.capabilities.agentOptions) {
+      throw new TeamError(
+        `subagent provider "${request.provider}" does not support a teammate model`,
+        'TEAM_MODEL_UNSUPPORTED',
+      )
+    }
     try {
       const started = await this.ctx.subagents.startActivation({
         delivery: 'parent',
@@ -269,6 +279,7 @@ export class TeamRoster {
         request: {
           prompt: request.prompt,
           parent: root,
+          ...(request.model === undefined ? {} : { agentOptions: request.model }),
         },
         signal,
       })

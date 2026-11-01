@@ -168,6 +168,11 @@ export interface SpawnTeammateRequest {
   readonly prompt: ContentBlock[]
   readonly context: 'fresh' | 'fork'
   readonly provider: string
+  /**
+   * Optional child LLM route override, for example `{ provider: 'fabric', model: 'antigravity' }`.
+   * Requires the selected subagent provider to support child `agentOptions`.
+   */
+  readonly model?: Readonly<{ provider: string; model: string }>
   readonly signal: AbortSignal
 }
 

@@ -390,7 +390,7 @@ export default class Fabric extends Service {
         headers,
         signal: AbortSignal.timeout(15_000),
       }
-      if (chunks.length > 0) init.body = Buffer.concat(chunks) as unknown as BodyInit
+      if (chunks.length > 0) init.body = Buffer.concat(chunks)
       const upstream = await fetch(`${this.dashboardUrl}${requested}`, init)
       const upstreamType = upstream.headers.get('content-type') ?? 'application/octet-stream'
       if (upstreamType.includes('text/event-stream') && upstream.body !== null) {

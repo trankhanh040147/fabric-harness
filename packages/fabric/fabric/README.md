@@ -28,8 +28,11 @@ None; each peer worker request is independent and DSH-side prompts are unchanged
 
 ## Known Limitations and Deferred Work
 
-- **Text-only peer channel** — the peer harness cannot call DSH tools, so a
-  Fabric-model turn answers text instead of executing tools.
+- **Best-effort tool protocol** — a peer receives the tool catalog and answers
+  either `{"type":"final"}` or `{"type":"tool_calls"}`; a peer that ignores the
+  protocol still produces text, so tool use degrades instead of failing.
+- **Peer latency** — each model step is one peer task (tens of seconds), so a
+  tool-using turn costs several roundtrips.
 - **Loopback HTTP surface** — the status/toggle/cockpit routes are guarded by
   peer address, not by the Connection cookie fence.
 - **Dashboard command path** — auto-start needs `dashboardArgs` to name the
