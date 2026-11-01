@@ -6,6 +6,7 @@
  */
 
 import { Service } from '@deepseek-ai/cordis'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -54,6 +55,7 @@ interface PeerTaskView {
 const STATUS_PATH = '/fabric/status'
 const ENGINE_PATH = '/fabric/engine'
 const DASHBOARD_PATH = '/fabric/dashboard'
+const DASHBOARD_APP_PATH = '/fabric/app'
 const DASHBOARD_PREFIXES = [
   '/health', '/workers', '/pool-status', '/overview', '/usage', '/routing',
   '/state', '/tasks', '/sessions', '/workflows', '/topology',
@@ -134,6 +136,12 @@ export default class Fabric extends Service {
   private targetCache: { at: number; targets: readonly string[] } = { at: 0, targets: [] }
   private emittedTargets: readonly string[] = []
   private readonly stateFile: string
+  private readonly dashboardAppEnabled: boolean
+  private readonly dashboardAutoStart: boolean
+  private readonly dashboardCommand: string
+  private readonly dashboardArgs: readonly string[]
+  private readonly dashboardCwd: string
+  private dashboardProcess: ChildProcess | undefined
 
   /**
    * @param ctx - host context carrying the LLM registry and the Web server.
@@ -149,6 +157,11 @@ export default class Fabric extends Service {
     this.requestTimeoutMs = config.requestTimeoutMs ?? 600_000
     this.pollIntervalMs = config.pollIntervalMs ?? 2_000
     this.fallbackTargets = config.targets ?? []
+    this.dashboardAppEnabled = config.dashboardApp !== false
+    this.dashboardAutoStart = config.dashboardAutoStart !== false
+    this.dashboardCommand = config.dashboardCommand ?? 'node'
+    this.dashboardArgs = config.dashboardArgs ?? []
+    this.dashboardCwd = config.dashboardCwd ?? ''
     this.client = new FabricMcpClient({
       command: config.mcpCommand ?? 'node',
       args: config.mcpArgs ?? [],
@@ -158,10 +171,13 @@ export default class Fabric extends Service {
     this.ctx.effect(() => () => {
       this.adapterDispose?.()
       this.client.dispose()
+      this.dashboardProcess?.kill()
+      this.dashboardProcess = undefined
     }, 'fabric: engine disposal')
     this.registerAdapter()
     this.mountRoutes()
     void this.client.ensure().catch(() => undefined)
+    if (this.dashboardAppEnabled) void this.ensureDashboard().catch(() => undefined)
   }
 
   /** Whether the `fabric` provider route currently accepts requests. */
@@ -327,6 +343,88 @@ export default class Fabric extends Service {
     }
   }
 
+  /** Start the operations cockpit once when it is not already reachable. */
+  private async ensureDashboard(): Promise<void> {
+    if (!this.dashboardAutoStart) return
+    if (this.dashboardArgs.length === 0) return
+    if (await this.dashboardReachable()) return
+    if (this.dashboardProcess !== undefined && this.dashboardProcess.exitCode === null) return
+    try {
+      const child = spawn(this.dashboardCommand, [...this.dashboardArgs], {
+        cwd: this.dashboardCwd.length > 0 ? this.dashboardCwd : undefined,
+        stdio: 'ignore',
+        detached: false,
+      })
+      child.on('exit', () => { if (this.dashboardProcess === child) this.dashboardProcess = undefined })
+      this.dashboardProcess = child
+      console.log('[fabric] started operations dashboard')
+    } catch (error) {
+      console.warn('[fabric] could not start the operations dashboard', error)
+    }
+  }
+
+  /** Proxy the operations cockpit and its relative API calls from our own origin. */
+  private async proxyDashboardApp(request: IncomingMessage, response: ServerResponse, prefix: string): Promise<void> {
+    const raw = request.url ?? '/'
+    const route = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw
+    const requested = route.length === 0 || route.startsWith('?') ? `/${route}` : route
+    const chunks: Buffer[] = []
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      let size = 0
+      for await (const chunk of request) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array)
+        size += buffer.byteLength
+        if (size > 1_048_576) {
+          sendJson(response, 413, { error: 'fabric: dashboard request body is too large' })
+          return
+        }
+        chunks.push(buffer)
+      }
+    }
+    const headers: Record<string, string> = { accept: 'application/json, text/html, */*' }
+    const contentType = request.headers['content-type']
+    if (typeof contentType === 'string') headers['content-type'] = contentType
+    try {
+      const init: RequestInit = {
+        method: request.method ?? 'GET',
+        headers,
+        signal: AbortSignal.timeout(15_000),
+      }
+      if (chunks.length > 0) init.body = Buffer.concat(chunks) as unknown as BodyInit
+      const upstream = await fetch(`${this.dashboardUrl}${requested}`, init)
+      const upstreamType = upstream.headers.get('content-type') ?? 'application/octet-stream'
+      if (upstreamType.includes('text/event-stream') && upstream.body !== null) {
+        response.statusCode = upstream.status
+        response.setHeader('content-type', upstreamType)
+        response.setHeader('cache-control', 'no-store')
+        response.setHeader('connection', 'keep-alive')
+        try {
+          for await (const chunk of upstream.body as unknown as AsyncIterable<Uint8Array>) {
+            response.write(Buffer.from(chunk))
+          }
+        } catch {
+          // The browser closed the stream; nothing left to forward.
+        }
+        response.end()
+        return
+      }
+      let body = Buffer.from(await upstream.arrayBuffer())
+      if (upstreamType.includes('text/html')) {
+        let html = body.toString('utf8')
+        html = html.replace(/="\/(?!\/)/g, '="./')
+        const shim = `<script>(function(){const P=${JSON.stringify(prefix)};const f=globalThis.fetch;globalThis.fetch=function(u,o){if(typeof u==='string'&&u.startsWith('/')&&!u.startsWith(P))u=P+u;return f.call(this,u,o)};const E=globalThis.EventSource;if(typeof E==='function'){globalThis.EventSource=function(u,c){if(typeof u==='string'&&u.startsWith('/')&&!u.startsWith(P))u=P+u;return new E(u,c)}}})();</script>`
+        html = html.replace('</head>', `${shim}</head>`)
+        body = Buffer.from(html)
+      }
+      response.statusCode = upstream.status
+      response.setHeader('content-type', upstreamType)
+      response.setHeader('cache-control', 'no-store')
+      response.end(body)
+    } catch (error) {
+      sendJson(response, 502, { error: `fabric: operations cockpit unreachable (${error instanceof Error ? error.message : String(error)})` })
+    }
+  }
+
   private registerAdapter(): void {
     this.adapterDispose?.()
     this.adapterDispose = undefined
@@ -373,6 +471,20 @@ export default class Fabric extends Service {
         }
       },
     }), `fabric: POST ${ENGINE_PATH}`)
+
+    if (this.dashboardAppEnabled) {
+      this.ctx.effect(() => this.ctx.webServer.register({
+        kind: 'prefix',
+        path: DASHBOARD_APP_PATH,
+        handler: async (request, response) => {
+          if (!isLoopback(request)) {
+            sendJson(response, 403, { error: 'fabric: loopback only' })
+            return
+          }
+          await this.proxyDashboardApp(request, response, DASHBOARD_APP_PATH)
+        },
+      }), `fabric: ${DASHBOARD_APP_PATH}`)
+    }
 
     this.ctx.effect(() => this.ctx.webServer.register({
       kind: 'prefix',

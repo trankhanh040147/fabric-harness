@@ -26,6 +26,16 @@ export interface Config {
   readonly targets?: string[]
   /** Persistent engine-state file; defaults to `$DSH_HOME/fabric-engine.json`. */
   readonly stateFile?: string
+  /** Serve the agent-fabric operations cockpit under `/fabric/app`. */
+  readonly dashboardApp?: boolean
+  /** Start the operations dashboard process when it is unreachable. */
+  readonly dashboardAutoStart?: boolean
+  /** Executable that launches the operations dashboard when auto-starting. */
+  readonly dashboardCommand?: string
+  /** Arguments for {@link Config.dashboardCommand}. */
+  readonly dashboardArgs?: string[]
+  /** Working directory for the operations dashboard process. */
+  readonly dashboardCwd?: string
 }
 
 const DEFAULT_MCP_ENTRY = process.env.FABRIC_MCP_ENTRY ?? ''
@@ -45,4 +55,9 @@ export const Config: z<Config> = z.object({
   pollIntervalMs: z.natural().min(500).default(2_000),
   targets: z.array(z.string()).default([]),
   stateFile: z.string().default(''),
+  dashboardApp: z.boolean().default(true),
+  dashboardAutoStart: z.boolean().default(true),
+  dashboardCommand: z.string().default(process.env.FABRIC_DASHBOARD_COMMAND ?? 'node'),
+  dashboardArgs: z.array(z.string()).default(process.env.FABRIC_DASHBOARD_ENTRY ? [process.env.FABRIC_DASHBOARD_ENTRY] : []),
+  dashboardCwd: z.string().default(''),
 })

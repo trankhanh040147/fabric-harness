@@ -8,11 +8,12 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Adds one main page and one sidebar panel entry named Fabric. The page polls the
-host `/fabric/status` surface for engine state, MCP connection, worker
-heartbeats, and offered peer models, toggles the engine through
-`POST /fabric/engine`, and mirrors the loopback ops dashboard through
-`GET /fabric/dashboard`.
+Adds one main page and one sidebar panel entry named Fabric. The page shows a
+slim engine toolbar (toggle, MCP/dashboard state, live worker count) and embeds
+the complete agent-fabric operations cockpit from `/fabric/app`, which the host
+proxies from the loopback dashboard so the cockpit's own API calls stay
+same-origin. A compact worker tab and a Settings section expose the same
+toggle.
 
 ## Model Experience
 
@@ -24,7 +25,8 @@ None; every Fabric surface is independent of model request context.
 
 ## Known Limitations and Deferred Work
 
-- **JSON read views** — dashboard tabs render JSON rather than reconstructed
-  tables and charts; a later pass should map each ops view to real components.
-- **Polling only** — the page polls every five seconds and has no streaming
-  subscription.
+- **Dashboard process required** — the cockpit is served from the agent-fabric
+  ops dashboard; the host auto-starts it when `dashboardAutoStart` is on,
+  otherwise the page shows a start hint.
+- **Polling toolbar** — the toolbar polls `/fabric/status` every eight seconds;
+  the embedded cockpit keeps its own live stream.

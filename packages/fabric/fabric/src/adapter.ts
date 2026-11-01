@@ -4,7 +4,7 @@
  * @module @deepseek-ai/dsh-fabric/adapter
  */
 
-import { LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm'
+import { LlmAdapter, LlmError, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions,
   LlmModelInfo,
@@ -13,7 +13,7 @@ import type {
   StreamChunk,
 } from '@deepseek-ai/dsh-llm'
 import type Fabric from './index.ts'
-import { buildPeerPrompt, estimateTokens } from './prompt.ts'
+import { buildPeerPrompt, estimateTokens, parsePeerReply } from './prompt.ts'
 
 /** Adapter serving the single `fabric` provider route. */
 export class FabricAdapter extends LlmAdapter {
@@ -54,17 +54,29 @@ export class FabricAdapter extends LlmAdapter {
     const target = options.model
     if (target.length === 0) throw new LlmError('Fabric requires a peer target as its model', 'FABRIC_TARGET_MISSING')
     const prompt = buildPeerPrompt(options)
-    const text = await this.fabric.askAndWait(target, prompt, options.signal, options.sessionId)
-    const index = 0
-    yield { type: 'block-start', index, blockType: 'text' }
-    for (let at = 0; at < text.length; at += 4_000) {
-      yield { type: 'text-delta', index, text: text.slice(at, at + 4_000) }
+    const reply = parsePeerReply(await this.fabric.askAndWait(target, prompt, options.signal, options.sessionId))
+    const usage = {
+      inputTokens: estimateTokens(prompt),
+      outputTokens: estimateTokens(reply.kind === 'final' ? reply.text : JSON.stringify(reply.calls)),
     }
-    yield { type: 'block-end', index, block: { type: 'text', text } }
-    yield {
-      type: 'usage',
-      usage: { inputTokens: estimateTokens(prompt), outputTokens: estimateTokens(text) },
+    if (reply.kind === 'final') {
+      const index = 0
+      yield { type: 'block-start', index, blockType: 'text' }
+      for (let at = 0; at < reply.text.length; at += 4_000) {
+        yield { type: 'text-delta', index, text: reply.text.slice(at, at + 4_000) }
+      }
+      yield { type: 'block-end', index, block: { type: 'text', text: reply.text } }
+      yield { type: 'usage', usage }
+      yield { type: 'finish', reason: { kind: 'stop' } }
+      return
     }
-    yield { type: 'finish', reason: { kind: 'stop' } }
+    for (const [index, call] of reply.calls.entries()) {
+      const id = ToolCallId(`fabric-${Date.now().toString(36)}-${String(index)}`)
+      yield { type: 'block-start', index, blockType: 'tool-call' }
+      yield { type: 'tool-call-delta', index, id, name: call.name, argumentsDelta: call.arguments }
+      yield { type: 'block-end', index, block: { type: 'tool-call', id, name: call.name, arguments: call.arguments } }
+    }
+    yield { type: 'usage', usage }
+    yield { type: 'finish', reason: { kind: 'tool-calls' } }
   }
 }

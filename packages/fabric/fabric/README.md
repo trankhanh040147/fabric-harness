@@ -11,9 +11,12 @@ English | [中文](README.zh.md)
 Mounts the `fabric` LLM provider route, whose model ids are agent-fabric worker
 targets. The browser half reads `GET /fabric/status` for worker heartbeats,
 `POST /fabric/engine` to toggle the engine, and `GET /fabric/dashboard?path=…`
-for a loopback ops-dashboard proxy. The MCP server is spawned lazily and
-reconnected on demand; the `enabled` setting unregisters the provider route so
-model catalogs stop offering peers.
+for a loopback ops-dashboard proxy. When `dashboardApp` is on, `/fabric/app`
+proxies the full operations cockpit and injects a same-origin URL shim for its
+relative API calls; `dashboardAutoStart` launches the dashboard process when it
+is unreachable. The MCP server is spawned lazily and reconnected on demand; the
+`enabled` setting unregisters the provider route so model catalogs stop
+offering peers.
 
 ## Model Experience
 
@@ -27,5 +30,8 @@ None; each peer worker request is independent and DSH-side prompts are unchanged
 
 - **Text-only peer channel** — the peer harness cannot call DSH tools, so a
   Fabric-model turn answers text instead of executing tools.
-- **Loopback HTTP surface** — the status/toggle routes are guarded by peer
-  address, not by the Connection cookie fence.
+- **Loopback HTTP surface** — the status/toggle/cockpit routes are guarded by
+  peer address, not by the Connection cookie fence.
+- **Dashboard command path** — auto-start needs `dashboardArgs` to name the
+  agent-fabric `dashboard/server.ts` entry; without it the cockpit only works
+  while the dashboard runs externally.

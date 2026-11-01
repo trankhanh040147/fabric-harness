@@ -601,6 +601,9 @@
         enabled: true
         dashboardUrl: http://127.0.0.1:8788
         targets: [claude, codex, antigravity, opencode, cursor, hermes]
+        dashboardApp: true
+        dashboardAutoStart: true
+        dashboardArgs: !!js "[process.env.FABRIC_DASHBOARD_ENTRY ?? '/Users/vulcanlabs/src/gh/agent-fabric/src/dashboard/server.ts']"
         mcpArgs: !!js "[process.env.FABRIC_MCP_ENTRY ?? '/Users/vulcanlabs/src/gh/agent-fabric/src/mcp/peer-mcp.ts']"
 
     - id: ui-fabric
