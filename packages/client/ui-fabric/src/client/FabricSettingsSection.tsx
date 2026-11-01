@@ -9,7 +9,7 @@ interface SettingsStatus {
   readonly models: readonly { readonly id: string }[]
 }
 
-const card = { border: '1px solid rgba(128,128,128,0.25)', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column' as const, gap: 12 }
+const card = { border: '1px solid color-mix(in srgb, currentColor 18%, transparent)', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column' as const, gap: 12 }
 const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }
 
 /**
@@ -59,7 +59,7 @@ export function FabricSettingsSection() {
             Route this Session&apos;s model calls to agent-fabric peers. Off keeps DeepSeek only.
           </div>
         </div>
-        <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '6px 14px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '6px 14px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid color-mix(in srgb, currentColor 25%, transparent)', background: 'transparent', color: 'inherit' }}>
           {status?.enabled === true ? 'Turn off' : 'Turn on'}
         </button>
       </div>

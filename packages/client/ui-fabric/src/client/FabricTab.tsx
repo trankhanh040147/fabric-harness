@@ -64,7 +64,7 @@ export function FabricTab() {
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <strong>Workers</strong>
-        <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '2px 10px', borderRadius: 999, cursor: 'pointer' }}>
+        <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '2px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid color-mix(in srgb, currentColor 25%, transparent)', background: 'transparent', color: 'inherit' }}>
           {status?.enabled === true ? 'Engine on' : 'Engine off'}
         </button>
       </div>

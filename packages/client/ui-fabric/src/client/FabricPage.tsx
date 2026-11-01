@@ -104,10 +104,12 @@ interface Recommend {
 const POLL_MS = 5_000
 
 const pageStyle = { padding: 20, display: 'flex', flexDirection: 'column' as const, gap: 16, height: '100%', overflow: 'auto' }
-const cardStyle = { border: '1px solid var(--dsh-border, #2b2b2b)', borderRadius: 10, padding: 14, background: 'var(--dsh-surface, #1d1d1d)' }
+const cardStyle = { border: '1px solid color-mix(in srgb, currentColor 18%, transparent)', borderRadius: 10, padding: 14 }
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 10 }
 const thStyle = { textAlign: 'left' as const, padding: '4px 10px 4px 0', opacity: 0.65, fontWeight: 500 }
 const tdStyle = { padding: '4px 10px 4px 0' }
+const controlStyle = { padding: '6px 12px', borderRadius: 8, border: '1px solid color-mix(in srgb, currentColor 25%, transparent)', background: 'transparent', color: 'inherit', cursor: 'pointer' }
+const chipStyle = { border: '1px solid color-mix(in srgb, currentColor 18%, transparent)', borderRadius: 999, padding: '3px 10px' }
 
 function dot(color: string) {
   return <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
@@ -249,7 +251,7 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
           </div>
         </div>
         <div style={rowStyle}>
-          <button type="button" onClick={() => { void load() }} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Refresh</button>
+          <button type="button" onClick={() => { void load() }} style={controlStyle}>Refresh</button>
         </div>
       </div>
 
@@ -264,7 +266,7 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
         </div>
         <div style={rowStyle}>
           <span style={{ fontSize: 12, opacity: 0.8 }}>{status?.enabled === true ? 'On' : 'Off'}</span>
-          <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ padding: '6px 14px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <button type="button" disabled={busy || status === undefined} onClick={() => { void toggle() }} style={{ ...controlStyle, borderRadius: 999, whiteSpace: 'nowrap' }}>
             {busy ? '…' : status?.enabled === true ? 'Turn off' : 'Turn on'}
           </button>
         </div>
@@ -293,7 +295,7 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
           ? <div style={{ opacity: 0.7, fontSize: 13 }}>No workers reported yet. Start agent-fabric workers, then refresh.</div>
           : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
             {status?.workers.map(worker => (
-              <div key={worker.target} style={{ border: '1px solid var(--dsh-border, #2b2b2b)', borderRadius: 8, padding: 10 }}>
+              <div key={worker.target} style={{ border: '1px solid color-mix(in srgb, currentColor 18%, transparent)', borderRadius: 8, padding: 10 }}>
                 <div style={rowStyle}>{dot(livenessColor(worker.liveness))}<strong>{worker.target}</strong></div>
                 <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
                   liveness: {worker.liveness} · busy: {worker.busy} · replicas: {worker.replicas}
@@ -390,13 +392,13 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
             value={recommendTask}
             onChange={(event) => { setRecommendTask(event.target.value) }}
             placeholder="Describe a task to get a worker recommendation…"
-            style={{ flex: 1, padding: '6px 10px', borderRadius: 8 }}
+            style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid color-mix(in srgb, currentColor 25%, transparent)', background: 'transparent', color: 'inherit' }}
           />
-          <button type="button" onClick={() => { void askRecommend() }} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer' }}>Recommend</button>
+          <button type="button" onClick={() => { void askRecommend() }} style={controlStyle}>Recommend</button>
         </div>
         {recommendFailed && <div style={{ marginTop: 10, fontSize: 12, color: '#f85149' }}>Recommendation request failed.</div>}
         {recommend !== undefined && (
-          <div style={{ marginTop: 12, border: '1px solid rgba(128,128,128,0.25)', borderRadius: 8, padding: 12, fontSize: 13 }}>
+          <div style={{ marginTop: 12, border: '1px solid color-mix(in srgb, currentColor 18%, transparent)', borderRadius: 8, padding: 12, fontSize: 13 }}>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span><strong>{recommend.recommendedTarget ?? '—'}</strong> recommended</span>
               <span style={{ opacity: 0.75 }}>confidence {recommend.confidence === undefined ? '—' : `${Math.round(recommend.confidence * 100)}%`}</span>
@@ -463,7 +465,7 @@ export function FabricPage(_props: PropsRuntime<'main'>) {
           {(status?.models.length ?? 0) === 0
             ? <span style={{ opacity: 0.7 }}>No peer models while the engine is off.</span>
             : status?.models.map(model => (
-              <span key={model.id} style={{ border: '1px solid var(--dsh-border, #2b2b2b)', borderRadius: 999, padding: '3px 10px' }}>{model.name}</span>
+              <span key={model.id} style={chipStyle}>{model.name}</span>
             ))}
         </div>
       </div>
